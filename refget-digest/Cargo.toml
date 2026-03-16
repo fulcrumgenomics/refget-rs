@@ -1,0 +1,15 @@
+[package]
+name = "refget-digest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "GA4GH refget digest computation: SHA-512/24 (sha512t24u) and RFC 8785 JSON Canonicalization"
+
+[dependencies]
+sha2 = { workspace = true }
+base64 = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

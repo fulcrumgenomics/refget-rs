@@ -1,0 +1,134 @@
+name: Manage Release PRs and Publish Crates
+
+permissions:
+  pull-requests: write
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-plz-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Create or update release PR
+        uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Verify lockstep workspace versions
+        run: |
+          set -euo pipefail
+          WORKSPACE_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r \
+            '.packages[] | select(.name == "refget-digest") | .version')
+          MISMATCHES=$(cargo metadata --no-deps --format-version 1 | jq -r \
+            --arg ver "$WORKSPACE_VERSION" \
+            '.packages[] | select(.name | startswith("refget-")) | select(.version != $ver) | "\(.name) \(.version)"')
+          if [ -n "$MISMATCHES" ]; then
+            echo "ERROR: workspace version drift detected (expected $WORKSPACE_VERSION):"
+            echo "$MISMATCHES"
+            exit 1
+          fi
+          echo "All workspace crates at v$WORKSPACE_VERSION"
+      - name: Publish workspace crates in dependency order
+        id: publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # All workspace crates share a single version (lockstep).
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r \
+            '.packages[] | select(.name == "refget-digest") | .version')
+
+          PUBLISHED_VERSION=$(curl -sSf \
+            -H "User-Agent: refget-rs-ci (https://github.com/fulcrumgenomics/refget-rs)" \
+            "https://crates.io/api/v1/crates/refget-digest" | jq -r \
+            '.crate.max_version // "0.0.0"')
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$VERSION" = "$PUBLISHED_VERSION" ]; then
+            echo "All crates already at v$VERSION -- nothing to publish"
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Publishing all workspace crates (v$VERSION)..."
+
+          # Workspace crates in topological (dependency) order.
+          # Leaf crates first, binary crates excluded (publish = false).
+          CRATES=(
+            refget-digest
+            refget-model
+            refget-store
+            refget-server
+          )
+
+          for crate in "${CRATES[@]}"; do
+            CRATE_MAX_VERSION=$(curl -sS \
+              -H "User-Agent: refget-rs-ci (https://github.com/fulcrumgenomics/refget-rs)" \
+              "https://crates.io/api/v1/crates/${crate}" | jq -r \
+              '.crate.max_version // "0.0.0"')
+
+            if [ "$CRATE_MAX_VERSION" = "$VERSION" ]; then
+              echo "$crate v$VERSION already exists on crates.io -- skipping"
+              continue
+            fi
+
+            echo "Publishing $crate v$VERSION..."
+            cargo publish -p "$crate"
+            echo "Published $crate v$VERSION"
+          done
+
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        if: steps.publish.outputs.version != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.publish.outputs.version }}"
+          TAG="v${VERSION}"
+
+          # Idempotent: skip if tag/release already exist
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag "$TAG"
+          fi
+          if ! git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+            git push origin "$TAG"
+          fi
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "v${VERSION}" \
+              --generate-notes \
+              --latest
+          else
+            echo "Release $TAG already exists -- skipping"
+          fi
