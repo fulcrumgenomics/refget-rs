@@ -1,0 +1,22 @@
+[package]
+name = "refget-tools"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CLI tools for GA4GH refget digest computation and cache generation"
+publish = false
+
+[[bin]]
+name = "refget-tools"
+path = "src/main.rs"
+
+[dependencies]
+refget-digest = { workspace = true }
+refget-model = { workspace = true }
+refget-store = { workspace = true }
+clap = { workspace = true }
+noodles-fasta = { workspace = true }
+md-5 = { workspace = true }
+sha2 = { workspace = true }
+anyhow = { workspace = true }

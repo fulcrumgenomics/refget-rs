@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "refget-digest",
+    "refget-model",
+    "refget-store",
+    "refget-server",
+    "refget-server-bin",
+    "refget-tools",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92.0"
+repository = "https://github.com/fulcrumgenomics/refget-rs"
+license = "MIT"
+
+[workspace.dependencies]
+refget-digest = { version = "0.1.0", path = "refget-digest" }
+refget-model = { version = "0.1.0", path = "refget-model" }
+refget-store = { version = "0.1.0", path = "refget-store" }
+refget-server = { version = "0.1.0", path = "refget-server" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+sha2 = "0.10"
+base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+noodles-fasta = "0.42"
+noodles-core = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+md-5 = "0.10"
+http = "1"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+anyhow = "1"
+serde_yaml = "0.9"
+memmap2 = "0.9"
