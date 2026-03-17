@@ -89,6 +89,7 @@ jobs:
             refget-store
             refget-server
             refget-client
+            refget-rs
           )
 
           for crate in "${CRATES[@]}"; do

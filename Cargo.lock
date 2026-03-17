@@ -1152,6 +1152,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "refget-rs"
+version = "0.1.0"
+dependencies = [
+ "refget-client",
+ "refget-digest",
+ "refget-model",
+ "refget-server",
+ "refget-store",
+]
+
+[[package]]
 name = "refget-server"
 version = "0.1.0"
 dependencies = [

@@ -4,6 +4,7 @@ members = [
     "refget-client",
     "refget-digest",
     "refget-model",
+    "refget-rs",
     "refget-store",
     "refget-server",
     "refget-server-bin",

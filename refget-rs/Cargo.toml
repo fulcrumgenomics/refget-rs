@@ -1,0 +1,23 @@
+[package]
+name = "refget-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/refget-rs"
+description = "GA4GH refget Sequences v2.0.0 and Sequence Collections v1.0.0 in Rust"
+
+[features]
+default = ["model", "digest"]
+client = ["dep:refget-client"]
+digest = ["dep:refget-digest"]
+model = ["dep:refget-model"]
+server = ["dep:refget-server"]
+store = ["dep:refget-store"]
+
+[dependencies]
+refget-client = { workspace = true, optional = true }
+refget-digest = { workspace = true, optional = true }
+refget-model = { workspace = true, optional = true }
+refget-server = { workspace = true, optional = true }
+refget-store = { workspace = true, optional = true }
