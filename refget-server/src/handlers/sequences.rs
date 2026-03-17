@@ -9,6 +9,7 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::Deserialize;
 
+use super::json_error;
 use crate::RefgetState;
 
 /// GA4GH refget v2 content type for JSON responses.
@@ -42,7 +43,7 @@ fn check_accept(headers: &HeaderMap, content_type: &str, fallbacks: &[&str]) -> 
             return None;
         }
     }
-    Some((StatusCode::NOT_ACCEPTABLE, "Not Acceptable").into_response())
+    Some(json_error(StatusCode::NOT_ACCEPTABLE, "Not Acceptable"))
 }
 
 /// Normalize a digest identifier for store lookup.
@@ -115,7 +116,13 @@ fn lookup_normalized<T>(
         match f(&candidate) {
             Ok(Some(val)) => return Ok(Some(val)),
             Ok(None) => continue,
-            Err(_) => return Err(Box::new(StatusCode::INTERNAL_SERVER_ERROR.into_response())),
+            Err(e) => {
+                tracing::error!("Store error looking up digest {candidate}: {e}");
+                return Err(Box::new(json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error",
+                )));
+            }
         }
     }
     Ok(None)
@@ -193,11 +200,10 @@ async fn get_sequence(
 
     // Reject combined Range header + query params
     if has_query_params && has_range_header {
-        return (
+        return json_error(
             StatusCode::BAD_REQUEST,
             "Cannot combine Range header with start/end query params",
-        )
-            .into_response();
+        );
     }
 
     // Parse Range header if present and no query params
@@ -205,7 +211,7 @@ async fn get_sequence(
         match parse_range_header(&headers) {
             Some((s, e)) => (s, e, true),
             None => {
-                return (StatusCode::BAD_REQUEST, "Malformed Range header").into_response();
+                return json_error(StatusCode::BAD_REQUEST, "Malformed Range header");
             }
         }
     } else {
@@ -215,7 +221,7 @@ async fn get_sequence(
     // Look up sequence length for bounds checking (needed before start/end validation)
     let length = match lookup_normalized(&digest, |d| state.sequence_store.get_length(d)) {
         Ok(Some(len)) => len,
-        Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+        Ok(None) => return json_error(StatusCode::NOT_FOUND, "Sequence not found"),
         Err(resp) => return *resp,
     };
 
@@ -223,35 +229,34 @@ async fn get_sequence(
     if let Some(s) = start
         && s >= length
     {
-        return (StatusCode::RANGE_NOT_SATISFIABLE, "start >= sequence length").into_response();
+        return json_error(StatusCode::RANGE_NOT_SATISFIABLE, "start >= sequence length");
     }
     // end > length: query params → 416, Range header → clamp (per HTTP spec)
     if let Some(e) = end
         && e > length
         && !used_range_header
     {
-        return (StatusCode::RANGE_NOT_SATISFIABLE, "end > sequence length").into_response();
+        return json_error(StatusCode::RANGE_NOT_SATISFIABLE, "end > sequence length");
     }
 
     // start > end: check circularity
     let is_circular_request = matches!((start, end), (Some(s), Some(e)) if s > e);
     if is_circular_request {
         if used_range_header {
-            return (StatusCode::RANGE_NOT_SATISFIABLE, "Range start > end").into_response();
+            return json_error(StatusCode::RANGE_NOT_SATISFIABLE, "Range start > end");
         }
         if !state.config.circular_supported {
-            return (StatusCode::NOT_IMPLEMENTED, "Circular sequences not supported")
-                .into_response();
+            return json_error(StatusCode::NOT_IMPLEMENTED, "Circular sequences not supported");
         }
         // Check if the sequence is actually circular
         let is_circular = match lookup_normalized(&digest, |d| state.sequence_store.get_metadata(d))
         {
             Ok(Some(meta)) => meta.circular,
-            Ok(None) => return StatusCode::NOT_FOUND.into_response(),
+            Ok(None) => return json_error(StatusCode::NOT_FOUND, "Sequence not found"),
             Err(resp) => return *resp,
         };
         if !is_circular {
-            return (StatusCode::RANGE_NOT_SATISFIABLE, "Sequence is not circular").into_response();
+            return json_error(StatusCode::RANGE_NOT_SATISFIABLE, "Sequence is not circular");
         }
     }
 
@@ -267,8 +272,7 @@ async fn get_sequence(
             req_end - req_start
         };
         if req_len > limit {
-            return (StatusCode::RANGE_NOT_SATISFIABLE, "Subsequence exceeds limit")
-                .into_response();
+            return json_error(StatusCode::RANGE_NOT_SATISFIABLE, "Subsequence exceeds limit");
         }
     }
 
@@ -311,7 +315,7 @@ async fn get_sequence(
                 (StatusCode::OK, [("content-type", REFGET_PLAIN_CONTENT_TYPE)], seq).into_response()
             }
         }
-        None => StatusCode::NOT_FOUND.into_response(),
+        None => json_error(StatusCode::NOT_FOUND, "Sequence not found"),
     }
 }
 
@@ -350,7 +354,7 @@ async fn get_metadata(
             )
                 .into_response()
         }
-        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Ok(None) => json_error(StatusCode::NOT_FOUND, "Sequence not found"),
         Err(resp) => *resp,
     }
 }

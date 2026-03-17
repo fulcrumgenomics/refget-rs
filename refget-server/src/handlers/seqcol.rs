@@ -8,6 +8,7 @@ use axum::routing::{get, post};
 use refget_model::{Level, SeqCol, compare};
 use serde::Deserialize;
 
+use super::json_error;
 use crate::RefgetState;
 
 pub fn router(state: RefgetState) -> Router {
@@ -59,7 +60,7 @@ async fn get_collection(
 
     match state.seqcol_store.get_collection(&digest) {
         Some(col) => axum::Json(col.to_json(level)).into_response(),
-        None => StatusCode::NOT_FOUND.into_response(),
+        None => json_error(StatusCode::NOT_FOUND, "Collection not found"),
     }
 }
 
@@ -72,7 +73,9 @@ async fn compare_collections(
 
     match (a, b) {
         (Some(a), Some(b)) => axum::Json(compare(a, b)).into_response(),
-        _ => StatusCode::NOT_FOUND.into_response(),
+        (None, None) => json_error(StatusCode::NOT_FOUND, "Collections not found"),
+        (None, _) => json_error(StatusCode::NOT_FOUND, format!("Collection not found: {digest1}")),
+        (_, None) => json_error(StatusCode::NOT_FOUND, format!("Collection not found: {digest2}")),
     }
 }
 
@@ -83,7 +86,7 @@ async fn compare_with_post(
 ) -> Response {
     match state.seqcol_store.get_collection(&digest1) {
         Some(a) => axum::Json(compare(a, &body)).into_response(),
-        None => StatusCode::NOT_FOUND.into_response(),
+        None => json_error(StatusCode::NOT_FOUND, "Collection not found"),
     }
 }
 
@@ -125,7 +128,7 @@ async fn get_attribute(
 ) -> Response {
     match state.seqcol_store.get_attribute(&attr, &digest) {
         Some(value) => axum::Json(value).into_response(),
-        None => StatusCode::NOT_FOUND.into_response(),
+        None => json_error(StatusCode::NOT_FOUND, "Attribute not found"),
     }
 }
 

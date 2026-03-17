@@ -5,7 +5,7 @@ mod memory;
 mod mmap;
 mod seqcol_store;
 
-pub use fasta::{DigestCache, FastaSequenceStore, FastaSequenceSummary};
+pub use fasta::{DigestCache, FastaSequenceStore, FastaSequenceSummary, SeqColCache, SidecarCache};
 pub use memory::InMemorySequenceStore;
 pub use mmap::MmapSequenceStore;
 pub use seqcol_store::InMemorySeqColStore;

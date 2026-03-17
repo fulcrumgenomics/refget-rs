@@ -5,8 +5,9 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use refget_client::RefgetClientBlocking;
-use refget_model::SeqCol;
-use refget_store::{DigestCache, FastaSequenceStore, collect_fasta_files};
+use refget_store::{
+    DigestCache, FastaSequenceStore, SeqColCache, SidecarCache, collect_fasta_files,
+};
 
 #[derive(Parser)]
 #[command(
@@ -93,6 +94,11 @@ fn cache_fastas(paths: &[PathBuf]) -> anyhow::Result<()> {
         let cache = DigestCache::from_fasta(fasta_path)?;
         let cache_path = cache.write(fasta_path)?;
         println!("Cached {} sequence digests to {}", cache.sequences.len(), cache_path.display());
+
+        let summaries: Vec<_> = cache.sequences.iter().map(|cd| cd.to_summary()).collect();
+        let seqcol_cache = SeqColCache::from_summaries(&summaries);
+        let seqcol_path = seqcol_cache.write(fasta_path)?;
+        println!("Cached SeqCol to {}", seqcol_path.display());
     }
 
     Ok(())
@@ -111,13 +117,7 @@ fn digest_fasta(fasta_path: &PathBuf) -> anyhow::Result<()> {
 
 fn digest_collection(fasta_path: &PathBuf) -> anyhow::Result<()> {
     let (_store, summaries) = FastaSequenceStore::from_fasta(fasta_path)?;
-
-    let col = SeqCol {
-        names: summaries.iter().map(|s| s.name.clone()).collect(),
-        lengths: summaries.iter().map(|s| s.length).collect(),
-        sequences: summaries.iter().map(|s| s.sha512t24u.clone()).collect(),
-        sorted_name_length_pairs: None,
-    };
+    let col = SeqColCache::from_summaries(&summaries).collection;
 
     let level0 = col.digest();
     let level1 = col.to_level1();

@@ -8,6 +8,8 @@ use std::path::Path;
 
 use memmap2::Mmap;
 use noodles_fasta::fai;
+
+use crate::fasta::SidecarCache;
 use refget_model::SequenceMetadata;
 
 use crate::fasta::{DigestCache, FastaSequenceSummary, index_digests, read_fai_index};

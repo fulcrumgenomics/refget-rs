@@ -10,3 +10,14 @@ pub use seqcol::{
 };
 pub use sequence::{Alias, SequenceMetadata};
 pub use service_info::{RefgetServiceDetails, SequenceServiceInfo, ServiceInfo, ServiceType};
+
+use serde::{Deserialize, Serialize};
+
+/// A structured JSON error response body.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    /// The HTTP status code.
+    pub status_code: u16,
+    /// A human-readable error message.
+    pub message: String,
+}

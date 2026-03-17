@@ -11,7 +11,62 @@ use refget_digest::sha512t24u;
 use refget_model::{Alias, SequenceMetadata};
 use serde::{Deserialize, Serialize};
 
+use refget_model::SeqCol;
+use serde::de::DeserializeOwned;
+
 use crate::{SequenceStore, StoreError, StoreResult, extract_subsequence};
+
+/// Trait for FASTA sidecar cache files (e.g. `.refget.json`, `.seqcol.json`).
+///
+/// Provides default implementations for `cache_path_for`, `write`, and `load_if_fresh`
+/// based on the cache file extension.
+pub trait SidecarCache: Serialize + DeserializeOwned + Sized {
+    /// The sidecar file extension (e.g. `"refget.json"`, `"seqcol.json"`).
+    const EXTENSION: &str;
+
+    /// Return the standard cache path for a given FASTA file.
+    fn cache_path_for<P: AsRef<Path>>(fasta_path: P) -> std::path::PathBuf {
+        let p = fasta_path.as_ref();
+        let ext = p
+            .extension()
+            .map(|e| format!("{}.{}", e.to_string_lossy(), Self::EXTENSION))
+            .unwrap_or_else(|| Self::EXTENSION.to_string());
+        p.with_extension(ext)
+    }
+
+    /// Write the cache to its standard sidecar path.
+    fn write<P: AsRef<Path>>(&self, fasta_path: P) -> StoreResult<std::path::PathBuf> {
+        let cache_path = Self::cache_path_for(&fasta_path);
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| StoreError::Fasta(format!("Failed to serialize cache: {e}")))?;
+        std::fs::write(&cache_path, json)?;
+        Ok(cache_path)
+    }
+
+    /// Try to load a cache file for the given FASTA, returning `None` if
+    /// the cache is missing or stale (older than the FASTA or its index).
+    fn load_if_fresh<P: AsRef<Path>>(fasta_path: P) -> Option<Self> {
+        let fasta_path = fasta_path.as_ref();
+        let cache_path = Self::cache_path_for(fasta_path);
+        let cache_meta = std::fs::metadata(&cache_path).ok()?;
+        let cache_mtime = cache_meta.modified().ok()?;
+
+        let fasta_mtime = std::fs::metadata(fasta_path).ok()?.modified().ok()?;
+        if cache_mtime < fasta_mtime {
+            return None;
+        }
+        let fai_path = fai_path_for(fasta_path);
+        if let Ok(fai_meta) = std::fs::metadata(&fai_path)
+            && let Ok(fai_mtime) = fai_meta.modified()
+            && cache_mtime < fai_mtime
+        {
+            return None;
+        }
+
+        let data = std::fs::read_to_string(&cache_path).ok()?;
+        serde_json::from_str(&data).ok()
+    }
+}
 
 /// A sequence store that holds all sequences in memory, loaded from indexed FASTA files.
 ///
@@ -90,6 +145,10 @@ impl CachedDigest {
     }
 }
 
+impl SidecarCache for DigestCache {
+    const EXTENSION: &str = "refget.json";
+}
+
 impl DigestCache {
     /// Compute digests for all sequences in a FASTA file.
     pub fn from_fasta<P: AsRef<Path>>(path: P) -> StoreResult<Self> {
@@ -137,49 +196,31 @@ impl DigestCache {
 
         Ok(Self { sequences })
     }
+}
 
-    /// Return the standard cache path for a given FASTA file.
-    pub fn cache_path_for<P: AsRef<Path>>(fasta_path: P) -> std::path::PathBuf {
-        let p = fasta_path.as_ref();
-        let ext = p
-            .extension()
-            .map(|e| format!("{}.refget.json", e.to_string_lossy()))
-            .unwrap_or_else(|| "refget.json".to_string());
-        p.with_extension(ext)
-    }
+/// Pre-computed SeqCol cache for a FASTA file.
+///
+/// Written as `{fasta_path}.seqcol.json`. When present and up-to-date,
+/// the server skips SeqCol construction at startup.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SeqColCache {
+    pub collection: SeqCol,
+}
 
-    /// Write the cache to its standard path.
-    pub fn write<P: AsRef<Path>>(&self, fasta_path: P) -> StoreResult<std::path::PathBuf> {
-        let cache_path = Self::cache_path_for(&fasta_path);
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| StoreError::Fasta(format!("Failed to serialize digest cache: {e}")))?;
-        std::fs::write(&cache_path, json)?;
-        Ok(cache_path)
-    }
+impl SidecarCache for SeqColCache {
+    const EXTENSION: &str = "seqcol.json";
+}
 
-    /// Try to load a cache file for the given FASTA, returning `None` if
-    /// the cache is missing or stale (older than the FASTA or its index).
-    pub fn load_if_fresh<P: AsRef<Path>>(fasta_path: P) -> Option<Self> {
-        let fasta_path = fasta_path.as_ref();
-        let cache_path = Self::cache_path_for(fasta_path);
-        let cache_meta = std::fs::metadata(&cache_path).ok()?;
-        let cache_mtime = cache_meta.modified().ok()?;
-
-        // Cache must be newer than both the FASTA and the .fai
-        let fasta_mtime = std::fs::metadata(fasta_path).ok()?.modified().ok()?;
-        if cache_mtime < fasta_mtime {
-            return None;
-        }
-        let fai_path = fai_path_for(fasta_path);
-        if let Ok(fai_meta) = std::fs::metadata(&fai_path)
-            && let Ok(fai_mtime) = fai_meta.modified()
-            && cache_mtime < fai_mtime
-        {
-            return None;
-        }
-
-        let data = std::fs::read_to_string(&cache_path).ok()?;
-        serde_json::from_str(&data).ok()
+impl SeqColCache {
+    /// Build a `SeqColCache` from per-sequence summaries.
+    pub fn from_summaries(summaries: &[FastaSequenceSummary]) -> Self {
+        let collection = SeqCol {
+            names: summaries.iter().map(|s| s.name.clone()).collect(),
+            lengths: summaries.iter().map(|s| s.length).collect(),
+            sequences: summaries.iter().map(|s| s.sha512t24u.clone()).collect(),
+            sorted_name_length_pairs: None,
+        };
+        Self { collection }
     }
 }
 
@@ -550,5 +591,56 @@ mod tests {
         writeln!(f, "TTTT").unwrap();
 
         assert!(DigestCache::load_if_fresh(&fasta_path).is_none());
+    }
+
+    #[test]
+    fn test_seqcol_cache_write_and_load() {
+        let dir = TempDir::new().unwrap();
+        let fasta_path = write_test_fasta(&dir);
+
+        let (_, summaries) = FastaSequenceStore::from_fasta(&fasta_path).unwrap();
+        let cache = SeqColCache::from_summaries(&summaries);
+        assert_eq!(cache.collection.names.len(), 2);
+        assert_eq!(cache.collection.names[0], "seq1");
+        assert_eq!(cache.collection.lengths[0], 8);
+
+        let cache_path = cache.write(&fasta_path).unwrap();
+        assert!(cache_path.exists());
+        assert!(cache_path.to_string_lossy().ends_with(".seqcol.json"));
+
+        let loaded = SeqColCache::load_if_fresh(&fasta_path).unwrap();
+        assert_eq!(loaded.collection.names, cache.collection.names);
+        assert_eq!(loaded.collection.lengths, cache.collection.lengths);
+        assert_eq!(loaded.collection.sequences, cache.collection.sequences);
+        assert_eq!(loaded.collection.digest(), cache.collection.digest());
+    }
+
+    #[test]
+    fn test_seqcol_cache_stale_is_ignored() {
+        let dir = TempDir::new().unwrap();
+        let fasta_path = write_test_fasta(&dir);
+
+        let (_, summaries) = FastaSequenceStore::from_fasta(&fasta_path).unwrap();
+        let cache = SeqColCache::from_summaries(&summaries);
+        cache.write(&fasta_path).unwrap();
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let mut f = std::fs::OpenOptions::new().append(true).open(&fasta_path).unwrap();
+        writeln!(f, ">seq3").unwrap();
+        writeln!(f, "TTTT").unwrap();
+
+        assert!(SeqColCache::load_if_fresh(&fasta_path).is_none());
+    }
+
+    #[test]
+    fn test_seqcol_cache_path_for() {
+        assert_eq!(
+            SeqColCache::cache_path_for("test.fa"),
+            std::path::PathBuf::from("test.fa.seqcol.json")
+        );
+        assert_eq!(
+            SeqColCache::cache_path_for("dir/genome.fasta"),
+            std::path::PathBuf::from("dir/genome.fasta.seqcol.json")
+        );
     }
 }

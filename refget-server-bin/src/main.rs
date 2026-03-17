@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::{Parser, ValueEnum};
-use refget_model::SeqCol;
 use refget_server::{RefgetConfig, RefgetState, refget_router};
 use refget_store::{
-    FastaSequenceStore, InMemorySeqColStore, MmapSequenceStore, SequenceStore, collect_fasta_files,
+    FastaSequenceStore, InMemorySeqColStore, MmapSequenceStore, SeqColCache, SequenceStore,
+    SidecarCache, collect_fasta_files,
 };
 use tower_http::cors::CorsLayer;
 use tracing::info;
@@ -105,7 +105,7 @@ fn load_memory_mode(
     for fasta_path in fasta_files {
         info!("  Loading {}", fasta_path.display());
         let summaries = store.add_fasta(fasta_path)?;
-        add_seqcol(&mut seqcol_store, &summaries);
+        add_seqcol(&mut seqcol_store, &summaries, fasta_path);
     }
 
     store.mark_circular(circular_sequences);
@@ -123,25 +123,32 @@ fn load_disk_mode(
     for fasta_path in fasta_files {
         info!("  Mapping {}", fasta_path.display());
         let summaries = store.add_fasta(fasta_path)?;
-        add_seqcol(&mut seqcol_store, &summaries);
+        add_seqcol(&mut seqcol_store, &summaries, fasta_path);
     }
 
     store.mark_circular(circular_sequences);
     Ok((Arc::new(store), Arc::new(seqcol_store)))
 }
 
-/// Build a SeqCol from summaries and add it to the store.
+/// Build a SeqCol from summaries (or load from cache) and add it to the store.
 fn add_seqcol(
     seqcol_store: &mut InMemorySeqColStore,
     summaries: &[refget_store::fasta::FastaSequenceSummary],
+    fasta_path: &std::path::Path,
 ) {
-    let col = SeqCol {
-        names: summaries.iter().map(|s| s.name.clone()).collect(),
-        lengths: summaries.iter().map(|s| s.length).collect(),
-        sequences: summaries.iter().map(|s| s.sha512t24u.clone()).collect(),
-        sorted_name_length_pairs: None,
+    let cache = SeqColCache::load_if_fresh(fasta_path);
+    let col = match cache {
+        Some(c) => {
+            let digest = c.collection.digest();
+            info!("    Loaded cached SeqCol: {digest}");
+            c.collection
+        }
+        None => {
+            let c = SeqColCache::from_summaries(summaries);
+            let digest = c.collection.digest();
+            info!("    {} sequences, collection digest: {digest}", summaries.len());
+            c.collection
+        }
     };
-    let digest = col.digest();
-    info!("    {} sequences, collection digest: {}", summaries.len(), digest);
     seqcol_store.add(col);
 }
