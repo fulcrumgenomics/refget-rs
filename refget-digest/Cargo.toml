@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "GA4GH refget digest computation: SHA-512/24 (sha512t24u) and RFC 8785 JSON Canonicalization"
+documentation = "https://docs.rs/refget-digest"
 
 [dependencies]
 sha2 = { workspace = true }

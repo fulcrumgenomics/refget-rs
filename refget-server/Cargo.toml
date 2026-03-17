@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Axum-based GA4GH refget Sequences v2.0.0 and Sequence Collections v1.0.0 server"
+documentation = "https://docs.rs/refget-server"
 
 [dependencies]
 refget-model = { workspace = true }

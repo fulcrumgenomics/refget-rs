@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Sequence storage backends for GA4GH refget: in-memory, FASTA, and memory-mapped"
+documentation = "https://docs.rs/refget-store"
 
 [dependencies]
 refget-digest = { workspace = true }

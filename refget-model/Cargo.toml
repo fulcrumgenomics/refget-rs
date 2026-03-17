@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Domain types for GA4GH refget Sequences and Sequence Collections APIs"
+documentation = "https://docs.rs/refget-model"
 
 [dependencies]
 refget-digest = { workspace = true }
