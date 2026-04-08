@@ -1,8 +1,8 @@
-![Build](https://github.com/fulcrumgenomics/refget-rs/actions/workflows/check.yml/badge.svg)
+![Build](https://github.com/fg-labs/refget-rs/actions/workflows/check.yml/badge.svg)
 [![Version at crates.io](https://img.shields.io/crates/v/refget-server)](https://crates.io/crates/refget-server)
 [![Documentation at docs.rs](https://img.shields.io/docsrs/refget-server)](https://docs.rs/refget-server)
-[![codecov](https://codecov.io/gh/fulcrumgenomics/refget-rs/graph/badge.svg)](https://codecov.io/gh/fulcrumgenomics/refget-rs)
-[![License](http://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/fulcrumgenomics/refget-rs/blob/main/LICENSE)
+[![codecov](https://codecov.io/gh/fg-labs/refget-rs/graph/badge.svg)](https://codecov.io/gh/fg-labs/refget-rs)
+[![License](http://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/fg-labs/refget-rs/blob/main/LICENSE)
 
 # refget-rs
 
@@ -33,7 +33,7 @@ refget-rs provides:
 Clone the repository:
 
 ```bash
-git clone https://github.com/fulcrumgenomics/refget-rs
+git clone https://github.com/fg-labs/refget-rs
 ```
 
 Build the release binaries:
@@ -104,10 +104,10 @@ refget-tools digest-collection ref.fa
 
 * [GA4GH refget specification](https://samtools.github.io/hts-specs/refget.html)
 * [Sequence Collections specification](https://ga4gh.github.io/seqcol-spec/)
-* [Issues](https://github.com/fulcrumgenomics/refget-rs/issues): Report a bug or request a feature
-* [Pull requests](https://github.com/fulcrumgenomics/refget-rs/pulls): Submit a patch or new feature
-* [Contributors guide](https://github.com/fulcrumgenomics/refget-rs/blob/main/CONTRIBUTING.md)
-* [License](https://github.com/fulcrumgenomics/refget-rs/blob/main/LICENSE): Released under the MIT license
+* [Issues](https://github.com/fg-labs/refget-rs/issues): Report a bug or request a feature
+* [Pull requests](https://github.com/fg-labs/refget-rs/pulls): Submit a patch or new feature
+* [Contributors guide](https://github.com/fg-labs/refget-rs/blob/main/CONTRIBUTING.md)
+* [License](https://github.com/fg-labs/refget-rs/blob/main/LICENSE): Released under the MIT license
 
 ## Authors
 
@@ -122,6 +122,6 @@ Development of refget-rs is supported by [Fulcrum Genomics](https://www.fulcrumg
 ## Disclaimer
 
 This software is under active development.
-While we make a best effort to test this software and to fix issues as they are reported, this software is provided as-is without any warranty (see the [license](https://github.com/fulcrumgenomics/refget-rs/blob/main/LICENSE) for details).
-Please submit an [issue](https://github.com/fulcrumgenomics/refget-rs/issues), and better yet a [pull request](https://github.com/fulcrumgenomics/refget-rs/pulls) as well, if you discover a bug or identify a missing feature.
+While we make a best effort to test this software and to fix issues as they are reported, this software is provided as-is without any warranty (see the [license](https://github.com/fg-labs/refget-rs/blob/main/LICENSE) for details).
+Please submit an [issue](https://github.com/fg-labs/refget-rs/issues), and better yet a [pull request](https://github.com/fg-labs/refget-rs/pulls) as well, if you discover a bug or identify a missing feature.
 Please contact [Fulcrum Genomics](https://www.fulcrumgenomics.com) if you are considering using this software or are interested in sponsoring its development.
