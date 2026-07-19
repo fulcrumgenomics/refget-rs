@@ -1,8 +1,9 @@
-//! Digest computation for GA4GH refget: SHA-512/24 with base64url encoding
-//! and RFC-8785 JSON Canonicalization Scheme (JCS).
+//! Digest computation for GA4GH refget: MD5 and SHA-512/24 with base64url
+//! encoding, and RFC-8785 JSON Canonicalization Scheme (JCS).
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use md5::Md5;
 use sha2::{Digest, Sha512};
 
 /// Compute the GA4GH sha512t24u digest of the given data.
@@ -13,6 +14,23 @@ pub fn sha512t24u(data: &[u8]) -> String {
     let hash = Sha512::digest(data);
     let truncated = &hash[..24];
     URL_SAFE_NO_PAD.encode(truncated)
+}
+
+/// Compute the MD5 digest of the given data as a lowercase hex string.
+///
+/// Refget identifies sequences by the lowercase hex MD5 of the upper-cased,
+/// whitespace-stripped residues, so callers are responsible for normalizing
+/// the sequence before hashing. Always returns 32 characters.
+pub fn md5_hex(data: &[u8]) -> String {
+    use std::fmt::Write;
+
+    let hash = Md5::digest(data);
+    let mut hex = String::with_capacity(hash.len() * 2);
+    for byte in hash {
+        // Writing to a String is infallible, so the result can be discarded.
+        let _ = write!(hex, "{byte:02x}");
+    }
+    hex
 }
 
 /// Canonicalize a JSON value according to RFC 8785 (JCS).
@@ -138,6 +156,32 @@ mod tests {
         assert_eq!(digest.len(), 32);
         // Verify it's valid base64url
         assert!(digest.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
+    }
+
+    #[test]
+    fn test_md5_hex_empty() {
+        // RFC 1321 test vector for the empty string
+        assert_eq!(md5_hex(b""), "d41d8cd98f00b204e9800998ecf8427e");
+    }
+
+    #[test]
+    fn test_md5_hex_spec_vector() {
+        // Refget canonical test vector: ACGT
+        assert_eq!(md5_hex(b"ACGT"), "f1f8f4bf413b16ad135722aa4591043e");
+    }
+
+    #[test]
+    fn test_md5_hex_is_lowercase_and_32_chars() {
+        let digest = md5_hex(b"NNNNNNNN");
+        assert_eq!(digest.len(), 32);
+        assert!(digest.chars().all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c)));
+    }
+
+    #[test]
+    fn test_md5_hex_preserves_leading_zeros() {
+        // "168" hashes to a digest whose first byte is 0x06, which a naive
+        // hex formatter without zero-padding would render as one nibble.
+        assert_eq!(md5_hex(b"168"), "006f52e9102a8d3be2fe5614f42ba989");
     }
 
     #[test]

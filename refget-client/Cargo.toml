@@ -27,4 +27,3 @@ refget-server = { workspace = true }
 refget-store = { workspace = true }
 refget-model = { workspace = true }
 tokio = { workspace = true }
-md-5 = { workspace = true }
