@@ -1072,7 +1072,6 @@ name = "refget-client"
 version = "0.1.0"
 dependencies = [
  "axum",
- "md-5",
  "refget-digest",
  "refget-model",
  "refget-server",
@@ -1089,6 +1088,7 @@ name = "refget-digest"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "md-5",
  "serde_json",
  "sha2",
 ]
@@ -1122,7 +1122,6 @@ dependencies = [
  "base64",
  "http",
  "http-body-util",
- "md-5",
  "refget-digest",
  "refget-model",
  "refget-store",
@@ -1157,7 +1156,6 @@ dependencies = [
 name = "refget-store"
 version = "0.1.0"
 dependencies = [
- "md-5",
  "memmap2",
  "noodles-core",
  "noodles-fasta",

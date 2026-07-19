@@ -4,10 +4,9 @@ use std::collections::HashMap;
 use std::io::BufReader;
 use std::path::Path;
 
-use md5::{Digest, Md5};
 use noodles_fasta as fasta;
 use noodles_fasta::fai;
-use refget_digest::sha512t24u;
+use refget_digest::{md5_hex, sha512t24u};
 use refget_model::{Alias, SequenceMetadata};
 use serde::{Deserialize, Serialize};
 
@@ -188,7 +187,7 @@ impl DigestCache {
                 }
             }
 
-            let md5 = format!("{:x}", Md5::digest(&seq_bytes));
+            let md5 = md5_hex(&seq_bytes);
             let sha512t24u = format!("SQ.{}", sha512t24u(&seq_bytes));
 
             sequences.push(CachedDigest { name, length, md5, sha512t24u, circular: false });
@@ -240,7 +239,7 @@ pub(crate) fn read_fai_index(path: &Path) -> StoreResult<fai::Index> {
         return Err(StoreError::Fasta(format!("FASTA index not found: {}", fai_path.display())));
     }
     let fai_reader = BufReader::new(std::fs::File::open(&fai_path)?);
-    fai::Reader::new(fai_reader)
+    fai::io::Reader::new(fai_reader)
         .read_index()
         .map_err(|e| StoreError::Fasta(format!("Failed to read FASTA index: {e}")))
 }

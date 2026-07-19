@@ -25,5 +25,4 @@ refget-digest = { workspace = true }
 refget-store = { workspace = true }
 tokio = { workspace = true }
 http-body-util = "0.1"
-md-5 = { workspace = true }
 sha2 = { workspace = true }

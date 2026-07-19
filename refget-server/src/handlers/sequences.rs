@@ -576,15 +576,14 @@ mod tests {
     // --- GA4GH Compliance Integration Tests ---
 
     fn compliance_test_state() -> RefgetState {
-        use md5::{Digest, Md5};
-        use refget_digest::sha512t24u;
+        use refget_digest::{md5_hex, sha512t24u};
         use refget_model::Alias;
 
         let mut seq_store = InMemorySequenceStore::new();
 
         // Canonical test vector: ACGT
         let seq = b"ACGT";
-        let md5_hex = format!("{:x}", Md5::digest(seq));
+        let md5_hex = md5_hex(seq);
         let sha_digest = sha512t24u(seq);
         let ga4gh_digest = format!("SQ.{sha_digest}");
 
@@ -673,9 +672,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_compliance_get_sequence_by_md5() {
-        use md5::{Digest, Md5};
+        use refget_digest::md5_hex;
 
-        let md5_hex = format!("{:x}", Md5::digest(b"ACGT"));
+        let md5_hex = md5_hex(b"ACGT");
         let app = router(compliance_test_state());
         let req =
             Request::builder().uri(format!("/sequence/{md5_hex}")).body(Body::empty()).unwrap();
@@ -688,9 +687,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_compliance_get_sequence_by_md5_uppercase() {
-        use md5::{Digest, Md5};
+        use refget_digest::md5_hex;
 
-        let md5_hex = format!("{:X}", Md5::digest(b"ACGT"));
+        let md5_hex = md5_hex(b"ACGT").to_uppercase();
         let app = router(compliance_test_state());
         let req =
             Request::builder().uri(format!("/sequence/{md5_hex}")).body(Body::empty()).unwrap();
@@ -717,9 +716,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_compliance_get_sequence_by_namespaced_md5() {
-        use md5::{Digest, Md5};
+        use refget_digest::md5_hex;
 
-        let md5_hex = format!("{:x}", Md5::digest(b"ACGT"));
+        let md5_hex = md5_hex(b"ACGT");
         let app = router(compliance_test_state());
         let req =
             Request::builder().uri(format!("/sequence/md5:{md5_hex}")).body(Body::empty()).unwrap();

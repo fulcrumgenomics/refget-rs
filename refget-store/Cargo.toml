@@ -15,7 +15,6 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 noodles-fasta = { workspace = true }
 noodles-core = { workspace = true }
-md-5 = { workspace = true }
 memmap2 = { workspace = true }
 
 [dev-dependencies]

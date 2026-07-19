@@ -4,8 +4,7 @@
 
 use std::sync::Arc;
 
-use md5::{Digest, Md5};
-use refget_digest::sha512t24u;
+use refget_digest::{md5_hex, sha512t24u};
 use refget_model::{Alias, SeqCol, SequenceMetadata};
 use refget_server::{RefgetConfig, RefgetState, refget_router};
 use refget_store::{InMemorySeqColStore, InMemorySequenceStore};
@@ -16,7 +15,7 @@ fn test_state() -> (RefgetState, TestData) {
 
     // Sequence 1: ACGTACGTAC
     let seq1 = b"ACGTACGTAC";
-    let md5_1 = format!("{:x}", Md5::digest(seq1));
+    let md5_1 = md5_hex(seq1);
     let sha_1 = sha512t24u(seq1);
     let ga4gh_1 = format!("SQ.{sha_1}");
     seq_store.add(
@@ -35,7 +34,7 @@ fn test_state() -> (RefgetState, TestData) {
 
     // Sequence 2: NNNNNNNN
     let seq2 = b"NNNNNNNN";
-    let md5_2 = format!("{:x}", Md5::digest(seq2));
+    let md5_2 = md5_hex(seq2);
     let sha_2 = sha512t24u(seq2);
     seq_store.add(
         SequenceMetadata {
