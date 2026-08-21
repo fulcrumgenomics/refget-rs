@@ -120,9 +120,9 @@ impl MmapSequenceStore {
             self.records.push(MmapRecordInfo {
                 mmap_idx,
                 metadata,
-                fai_offset: fai_rec.offset(),
-                fai_line_bases: fai_rec.line_bases(),
-                fai_line_width: fai_rec.line_width(),
+                fai_offset: fai_rec.position(),
+                fai_line_bases: fai_rec.line_base_count().into(),
+                fai_line_width: fai_rec.line_width().into(),
             });
         }
 
