@@ -12,18 +12,18 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.92.0"
 repository = "https://github.com/fg-labs/refget-rs"
 license = "MIT"
 
 [workspace.dependencies]
-refget-client = { version = "0.1.0", path = "refget-client" }
-refget-digest = { version = "0.1.0", path = "refget-digest" }
-refget-model = { version = "0.1.0", path = "refget-model" }
-refget-store = { version = "0.1.0", path = "refget-store" }
-refget-server = { version = "0.1.0", path = "refget-server" }
+refget-client = { version = "0.1.1", path = "refget-client" }
+refget-digest = { version = "0.1.1", path = "refget-digest" }
+refget-model = { version = "0.1.1", path = "refget-model" }
+refget-store = { version = "0.1.1", path = "refget-store" }
+refget-server = { version = "0.1.1", path = "refget-server" }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
